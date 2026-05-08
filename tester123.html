@@ -1,0 +1,1882 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>領土戦略ゲーム</title>
+<style>
+/* ============================================================
+   CSS変数・テーマ
+   ============================================================ */
+:root {
+  --bg: #f5f1e8;
+  --bg2: #ede4d3;
+  --bg3: #d8c3a5;
+  --panel: #fffaf2;
+  --panel2: #f3e8d7;
+  --border: #d6c2a8;
+  --border2: #c8b08f;
+  --text: #3a3228;
+  --text2: #6b5f52;
+  --text3: #9a8c7c;
+
+
+  /* 陣営色 */
+  --red:    #d96b5f;
+  --red-bg: #f7e3df;
+  --red-border: #d8a39b;
+
+
+  --blue:   #6f9dcf;
+  --blue-bg: #e7eef7;
+  --blue-border: #aabed8;
+
+
+  --yellow: #d9b45f;
+  --yellow-bg: #f8f0dd;
+  --yellow-border: #d8c08d;
+
+
+  --green:  #7fa77b;
+  --green-bg: #e8f0e5;
+  --green-border: #b7c9b3;
+
+
+  /* UI色 */
+  --gold: #c9a86a;
+  --positive: #7ba86f;
+  --negative: #c97b6d;
+  --neutral: #8f8577;
+
+
+  /* マス色 */
+  --cell-empty: #f3eadc;
+  --cell-void: #d8d0c4;
+  --cell-hover: #ece3d4;
+
+
+
+
+  --font-main: 'Noto Sans JP', sans-serif;
+  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+  --radius: 8px;
+}
+
+
+/* ============================================================
+   リセット・基本
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-main);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  user-select: none;
+}
+
+
+/* ============================================================
+   ヘッダー
+   ============================================================ */
+#header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  height: 60px;
+}
+
+
+/* 現在プレイヤー */
+#current-player-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 14px 6px 10px;
+  min-width: 160px;
+}
+#current-player-icon {
+  width: 34px; height: 34px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+#current-player-label { font-size: 10px; color: var(--text3); line-height: 1; }
+#current-player-name  { font-size: 15px; font-weight: 700; line-height: 1.3; }
+
+
+/* ターン数 */
+#turn-block {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 4px 16px;
+}
+#turn-label { font-size: 10px; color: var(--text3); }
+#turn-number { font-size: 22px; font-weight: 800; color: var(--gold); line-height: 1.2; }
+
+
+/* 治安ブロック */
+#security-block {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  min-width: 160px;
+}
+#security-icon { font-size: 22px; }
+.security-info { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.security-row  { display: flex; align-items: center; gap: 6px; }
+#security-pct  { font-size: 15px; font-weight: 700; }
+#security-bar-wrap {
+  width: 80px; height: 6px;
+  background: var(--bg);
+  border-radius: 3px; overflow: hidden;
+}
+#security-bar {
+  height: 100%; border-radius: 3px;
+  transition: width 0.4s, background 0.4s;
+}
+
+
+/* 資源ブロック */
+.resource-block {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+}
+.resource-icon { font-size: 22px; }
+.resource-info { display: flex; flex-direction: column; }
+.resource-name { font-size: 10px; color: var(--text3); }
+.resource-delta { font-size: 16px; font-weight: 700; }
+.resource-detail { font-size: 10px; color: var(--text3); white-space: nowrap; }
+
+
+/* メニューボタン */
+#header-right { margin-left: auto; display: flex; gap: 6px; }
+.header-btn {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.header-btn:hover { background: var(--panel2); }
+
+
+/* ============================================================
+   メインエリア
+   ============================================================ */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+
+/* ============================================================
+   左サイドバー（陣営一覧）
+   ============================================================ */
+#sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.faction-card {
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  border: 1px solid;
+  position: relative;
+  transition: opacity 0.3s;
+}
+.faction-card.defeated { opacity: 0.4; }
+.faction-card.active-turn { box-shadow: 0 0 0 2px #d8c3a5; }
+.faction-card-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 5px;
+}
+.faction-badge {
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: bold;
+  flex-shrink: 0;
+}
+.faction-card-name { font-size: 13px; font-weight: 700; }
+.faction-card-you  { font-size: 10px; color: var(--text3); }
+.faction-stats { display: flex; flex-direction: column; gap: 2px; }
+.faction-stat  { display: flex; gap: 4px; font-size: 11px; }
+.faction-stat-label { color: var(--text3); width: 26px; flex-shrink: 0; }
+.faction-stat-value { font-weight: 600; }
+.faction-resources { display: flex; gap: 8px; margin-top: 2px; }
+
+
+/* ============================================================
+   マップエリア
+   ============================================================ */
+#map-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+#map-wrap {
+  position: relative;
+}
+#map-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+/* 影響線SVGオーバーレイ */
+#influence-svg {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+}
+
+
+/* ============================================================
+   右パネル（マス情報）
+   ============================================================ */
+#info-panel {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#info-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+#info-panel-title { font-size: 14px; font-weight: 700; }
+#info-panel-close {
+  background: none; border: none; color: var(--text2);
+  font-size: 18px; cursor: pointer; line-height: 1;
+  padding: 2px 6px; border-radius: 4px;
+  transition: background 0.2s;
+}
+#info-panel-close:hover { background: var(--panel2); }
+#info-panel-body { padding: 12px; flex: 1; }
+.info-row {
+  display: flex; justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--text3); }
+.info-value { font-weight: 600; }
+.info-section-title {
+  font-size: 11px; color: var(--text3);
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.info-building-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.info-building-icon {
+  font-size: 28px;
+  width: 44px; height: 44px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.info-building-name { font-size: 14px; font-weight: 700; }
+.info-building-lv   { font-size: 11px; color: var(--text3); }
+
+
+/* アクションボタン群 */
+#action-buttons {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.action-btn {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: center;
+}
+.action-btn.primary {
+background: #efe2cc;
+border-color: #cdb08a;
+color: #5c4a36;
+}
+.action-btn.primary:hover {
+background: #e4d3bb;
+}
+
+
+.action-btn.danger {
+background: #f2dfd8;
+border-color: #cfa59a;
+color: #7a4f46;
+}
+.action-btn.danger:hover {
+background: #e8cfc5;
+}
+.action-btn.warning {
+background: #f4ead7;
+border-color: #ceb78d;
+color: #6d5737;
+}
+.action-btn.warning:hover {
+background: #eadcbc;
+}
+
+
+/* ============================================================
+   下部凡例
+   ============================================================ */
+#legend {
+  display: flex; align-items: center; gap: 16px;
+  padding: 5px 16px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  height: 34px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text2);
+}
+.legend-icon { font-size: 14px; }
+
+
+/* ============================================================
+   モーダル
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0;
+background: #cfc6b8;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 28px 32px;
+  min-width: 340px;
+  max-width: 500px;
+  box-shadow: var(--shadow);
+}
+.modal-title {
+  font-size: 20px; font-weight: 800;
+  margin-bottom: 18px; text-align: center;
+}
+.modal-btn {
+  display: block; width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-top: 8px;
+  transition: background 0.2s;
+}
+.modal-btn:hover { background: var(--bg3); }
+.modal-btn.primary-btn {
+  background: var(--bg3); border-color: #4a7abf;
+  color: #a8d0ff;
+}
+
+
+/* 戦闘モーダル */
+#battle-log {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 2;
+  margin: 12px 0;
+  min-height: 80px;
+}
+.dice-result { font-size: 18px; font-weight: 800; }
+
+
+/* ゲームオーバー */
+#gameover-overlay {
+  display: none;
+  position: fixed; inset: 0;
+ background: #bfb4a3;
+  align-items: center; justify-content: center;
+  z-index: 2000;
+  flex-direction: column;
+  gap: 20px;
+}
+#gameover-overlay.show { display: flex; }
+#gameover-title { font-size: 40px; font-weight: 900; }
+#gameover-sub   { font-size: 18px; color: var(--text2); }
+
+
+/* ターン通知 */
+#turn-notify {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: var(--panel);
+  border: 2px solid var(--border2);
+  border-radius: 14px;
+  padding: 20px 40px;
+  font-size: 22px; font-weight: 800;
+  text-align: center;
+  z-index: 900;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+}
+#turn-notify.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+
+/* セットアップ画面 */
+#setup-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3000;
+}
+#setup-box {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 36px 40px;
+  min-width: 400px;
+  box-shadow: var(--shadow);
+}
+#setup-box h1 {
+  font-size: 26px; font-weight: 900;
+  text-align: center; margin-bottom: 8px;
+  color: var(--gold);
+}
+#setup-box p {
+  text-align: center; color: var(--text3);
+  margin-bottom: 24px; font-size: 13px;
+}
+.setup-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px;
+}
+.setup-label { font-size: 13px; color: var(--text2); width: 120px; }
+.setup-select {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.setup-player-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--bg2);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.setup-player-badge {
+  width: 28px; height: 28px;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  flex-shrink: 0;
+}
+.setup-player-name-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 13px;
+  padding: 2px 4px;
+}
+.setup-player-name-input:focus { outline: none; border-bottom-color: var(--gold); }
+
+
+/* スクロールバー */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+
+/* 数値色 */
+.pos { color: var(--positive); }
+.neg { color: var(--negative); }
+.neu { color: var(--neutral); }
+</style>
+</head>
+<body>
+
+
+<div id="setup-overlay">
+  <div id="setup-box">
+    <h1>⚔ 領土戦略</h1>
+    <p>4陣営によるターン制領土戦略ゲーム</p>
+    <div class="setup-row">
+      <span class="setup-label">プレイヤー数</span>
+      <select id="player-count-select" class="setup-select">
+        <option value="2">2人</option>
+        <option value="3">3人</option>
+        <option value="4" selected>4人</option>
+      </select>
+    </div>
+    <div id="player-name-list"></div>
+    <button class="modal-btn primary-btn" style="margin-top:20px" onclick="startGame()">ゲーム開始</button>
+  </div>
+</div>
+
+
+<div id="header">
+  <div id="current-player-block">
+    <div id="current-player-icon">?</div>
+    <div>
+      <div id="current-player-label">現在のターン</div>
+      <div id="current-player-name">—</div>
+    </div>
+  </div>
+
+
+  <div id="turn-block">
+    <div id="turn-label">ターン数</div>
+    <div id="turn-number">1</div>
+  </div>
+
+
+  <div id="security-block">
+    <div id="security-icon">🛡</div>
+    <div class="security-info">
+      <div class="security-row">
+        <span style="font-size:10px;color:var(--text3)">治安</span>
+        <span id="security-pct">100%</span>
+      </div>
+      <div id="security-bar-wrap">
+        <div id="security-bar" style="width:100%;background:var(--positive)"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="resource-block">
+    <div class="resource-icon">🌾</div>
+    <div class="resource-info">
+      <span class="resource-name">食糧</span>
+      <span class="resource-delta" id="food-delta">+0</span>
+      <span class="resource-detail" id="food-detail">生産 0 − 消費 0</span>
+    </div>
+  </div>
+
+
+  <div class="resource-block">
+    <div class="resource-icon">⛏</div>
+    <div class="resource-info">
+      <span class="resource-name">鉱石</span>
+      <span class="resource-delta" id="ore-delta">+0</span>
+      <span class="resource-detail" id="ore-detail">生産 0 − 消費 0</span>
+    </div>
+  </div>
+
+
+  <div id="header-right">
+    <button class="header-btn" onclick="showMenu()">メニュー</button>
+  </div>
+</div>
+
+
+<div id="main">
+  <div id="sidebar" id="sidebar"></div>
+
+
+  <div id="map-area">
+    <div id="map-wrap">
+      <canvas id="map-canvas"></canvas>
+      <svg id="influence-svg"></svg>
+    </div>
+  </div>
+
+
+  <div id="info-panel">
+    <div id="info-panel-header">
+      <span id="info-panel-title">マス情報</span>
+      <button id="info-panel-close" onclick="closeInfoPanel()">×</button>
+    </div>
+    <div id="info-panel-body">
+      <p style="color:var(--text3);font-size:12px;margin-top:20px;text-align:center">
+        マスをクリックしてください
+      </p>
+    </div>
+    <div id="action-buttons"></div>
+  </div>
+</div>
+
+
+<div id="legend">
+  <div class="legend-item"><span class="legend-icon">🏘</span>開拓地</div>
+  <div class="legend-item"><span class="legend-icon">🌾</span>農場</div>
+  <div class="legend-item"><span class="legend-icon">⛏</span>鉱山</div>
+  <div class="legend-item"><span class="legend-icon">🏰</span>要塞</div>
+  <div class="legend-item"><span class="legend-icon">🌿</span>肥沃な土地</div>
+  <div class="legend-item"><span class="legend-icon">💎</span>鉱脈</div>
+  <div class="legend-item"><span class="legend-icon">🪨</span>断崖</div>
+</div>
+
+
+<div id="turn-notify"></div>
+
+
+<div id="gameover-overlay">
+  <div id="gameover-title"></div>
+  <div id="gameover-sub"></div>
+  <button class="modal-btn" onclick="location.reload()" style="width:200px;margin-top:10px">もう一度プレイ</button>
+</div>
+
+
+<script>
+/* ============================================================
+   定数 / バランス設定
+   ここを変更することでゲームバランスを調整できる
+   ============================================================ */
+const CONFIG = {
+  MAP_SIZE: 7,            // マップ縦横サイズ (9から7に変更)
+  VOID_RATE: 0.15,        // 欠落マス率
+
+
+  // 特殊地形の個数
+  SPECIAL_COUNT: { fertile: 2, vein: 2, cliff: 2 },
+
+
+  // 資源初期値
+  INIT_FOOD: 10,
+  INIT_ORE:  10,
+
+
+  // 領土1マスあたりの消費を0に変更
+  TERRITORY_FOOD_COST: 0,  
+
+
+  // 治安変動
+  SECURITY: {
+    BOTH_POSITIVE: 10,   // 両黒字
+    PER_DEFICIT:   5,    // 赤字1につき -5%
+    MAX: 100,
+    MIN: 0,
+  },
+
+
+  // 開拓地
+  SETTLEMENT: {
+    FOOD_PROD: 1,         // 食糧+1固定
+  },
+
+
+  // 農場 (Lv1-3)
+  FARM: {
+    FOOD_PROD:    [2, 4, 6],   // 各Lvの食糧生産
+    ADJ_REDUCE:   [1, 2, 3],   // 隣接マスの食糧消費軽減
+  },
+
+
+  // 鉱山 (Lv1-3)
+  MINE: {
+    ORE_PROD:     [2, 4, 6],   // 各Lvの鉱石生産
+    FOOD_COST:    [2, 4, 6],   // 鉱山自身の食糧消費
+    ADJ_REDUCE:   [1, 2, 3],   // 隣接マスの鉱石消費軽減
+  },
+
+
+  // 要塞 (Lv1-3)
+  FORTRESS: {
+    SELF_POWER:   [2, 3, 4],   // 自身の戦力補正
+    ADJ_POWER:    [1, 2, 3],   // 隣接マスへの戦力補正
+    FOOD_COST:    [2, 4, 6],
+    ORE_COST:     [2, 4, 6],
+  },
+
+
+  // 特殊地形効果
+  TERRAIN: {
+    FERTILE_MULT: 2,   // 肥沃な土地: 食糧生産2倍
+    VEIN_MULT:    2,   // 鉱脈: 鉱石生産2倍
+    CLIFF_POWER:  2,   // 断崖: 攻守+2
+  },
+
+
+  // 四隅からの最小距離（特殊地形・初期配置用）
+  CORNER_EXCLUSION: 2,
+
+
+  CELL_SIZE: 66,  // マスのピクセルサイズ
+};
+
+
+/* ============================================================
+   定義: 建物タイプ / 特殊地形タイプ / 陣営
+   ============================================================ */
+const BUILDING = { NONE: 'none', SETTLEMENT: 'settlement', FARM: 'farm', MINE: 'mine', FORTRESS: 'fortress' };
+const TERRAIN  = { NONE: 'none', FERTILE: 'fertile', VEIN: 'vein', CLIFF: 'cliff' };
+const FACTION_DEFS = [
+  { id: 'red',    name: '赤',  emoji: '🔴', color: '#d96b5f', bg: '#f7e3df', border: '#d8a39b', textColor: '#7a4f46' },
+  { id: 'blue',   name: '青',  emoji: '🔵', color: '#6f9dcf', bg: '#e7eef7', border: '#aabed8', textColor: '#4c6078' },
+  { id: 'yellow', name: '黄',  emoji: '🟡', color: '#d9b45f', bg: '#f8f0dd', border: '#d8c08d', textColor: '#6f5b33' },
+  { id: 'green',  name: '緑',  emoji: '🟢', color: '#7fa77b', bg: '#e8f0e5', border: '#b7c9b3', textColor: '#4f6a4b' },
+];
+
+
+
+
+const BUILDING_ICONS = {
+  [BUILDING.NONE]:       '🌫',
+  [BUILDING.SETTLEMENT]: '🏘',
+  [BUILDING.FARM]:       '🌾',
+  [BUILDING.MINE]:       '⛏',
+  [BUILDING.FORTRESS]:   '🏰',
+};
+const BUILDING_NAMES = {
+  [BUILDING.NONE]:       '未開拓',
+  [BUILDING.SETTLEMENT]: '開拓地',
+  [BUILDING.FARM]:       '農場',
+  [BUILDING.MINE]:       '鉱山',
+  [BUILDING.FORTRESS]:   '要塞',
+};
+const TERRAIN_ICONS = {
+  [TERRAIN.NONE]:    '',
+  [TERRAIN.FERTILE]: '🌿',
+  [TERRAIN.VEIN]:    '💎',
+  [TERRAIN.CLIFF]:   '🪨',
+};
+const TERRAIN_NAMES = {
+  [TERRAIN.NONE]:    '—',
+  [TERRAIN.FERTILE]: '肥沃な土地',
+  [TERRAIN.VEIN]:    '鉱脈',
+  [TERRAIN.CLIFF]:   '断崖',
+};
+
+
+/* ============================================================
+   ゲーム状態
+   ============================================================ */
+let G = {
+  // マップ: cells[r][c] = { void, terrain, owner(null or factionId), building, level }
+  cells: [],
+  // 陣営データ
+  factions: [],       // { id, name, food, ore, security, defeated, territories }
+  activeFactions: [], // 生存中陣営IDリスト
+  // ターン管理
+  turnIndex: 0,       // activeFactions中の現在インデックス
+  globalTurn: 1,
+  actionDone: false,  // 現ターン行動済みフラグ
+  // 選択中マス
+  selectedCell: null, // {r, c}
+  playerCount: 4,
+  playerNames: {},
+};
+
+
+/* ============================================================
+   セットアップUI
+   ============================================================ */
+function initSetup() {
+  const sel = document.getElementById('player-count-select');
+  sel.addEventListener('change', renderNameInputs);
+  renderNameInputs();
+}
+
+
+function renderNameInputs() {
+  const n = parseInt(document.getElementById('player-count-select').value);
+  const container = document.getElementById('player-name-list');
+  container.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const fd = FACTION_DEFS[i];
+    const row = document.createElement('div');
+    row.className = 'setup-player-row';
+    row.innerHTML = `
+      <div class="setup-player-badge" style="background:${fd.color};color:#fff">${fd.name}</div>
+      <input class="setup-player-name-input" id="pname-${i}"
+        placeholder="${fd.name}プレイヤー" value="${fd.name}">
+    `;
+    container.appendChild(row);
+  }
+}
+
+
+function startGame() {
+  const n = parseInt(document.getElementById('player-count-select').value);
+  G.playerCount = n;
+  G.playerNames = {};
+  for (let i = 0; i < n; i++) {
+    const inp = document.getElementById(`pname-${i}`);
+    G.playerNames[FACTION_DEFS[i].id] = inp ? inp.value || FACTION_DEFS[i].name : FACTION_DEFS[i].name;
+  }
+  document.getElementById('setup-overlay').style.display = 'none';
+  initGame();
+}
+
+
+/* ============================================================
+   ゲーム初期化
+   ============================================================ */
+function initGame() {
+  // 陣営初期化
+  G.factions = FACTION_DEFS.slice(0, G.playerCount).map(fd => ({
+    id: fd.id,
+    name: G.playerNames[fd.id] || fd.name,
+    food: CONFIG.INIT_FOOD,
+    ore:  CONFIG.INIT_ORE,
+    security: 100,
+    defeated: false,
+    territories: 0,
+  }));
+  G.activeFactions = G.factions.map(f => f.id);
+  G.turnIndex = 0;
+  G.globalTurn = 1;
+  G.actionDone = false;
+  G.selectedCell = null;
+
+
+  // マップ生成
+  generateMap();
+
+
+  // 初期配置
+  placeStartingTerritories();
+
+
+  // 領土数集計
+  updateTerritoryCount();
+
+
+  // UI描画
+  renderAll();
+  showTurnNotify();
+}
+
+
+/* ============================================================
+   マップ生成
+   ============================================================ */
+function generateMap() {
+  const S = CONFIG.MAP_SIZE;
+  // 全マス初期化
+  G.cells = Array.from({length: S}, (_, r) =>
+    Array.from({length: S}, (_, c) => ({
+      void: false, terrain: TERRAIN.NONE,
+      owner: null, building: BUILDING.NONE, level: 0,
+    }))
+  );
+
+
+  // 欠落マス生成
+  generateVoids();
+
+
+  // 特殊地形配置
+  placeSpecialTerrains();
+}
+
+
+function generateVoids() {
+  const S = CONFIG.MAP_SIZE;
+  const total = S * S;
+  const targetVoid = Math.floor(total * CONFIG.VOID_RATE);
+  const corners = [[0,0],[0,S-1],[S-1,0],[S-1,S-1]];
+
+
+  let attempts = 0;
+  let voidCount = 0;
+
+
+  while (voidCount < targetVoid && attempts < 2000) {
+    attempts++;
+    const r = Math.floor(Math.random() * S);
+    const c = Math.floor(Math.random() * S);
+    if (G.cells[r][c].void) continue;
+    if (corners.some(([cr, cc]) => cr === r && cc === c)) continue;
+    if (isNearStartPosition(r, c)) continue;
+
+
+    G.cells[r][c].void = true;
+    if (isConnected()) {
+      voidCount++;
+    } else {
+      G.cells[r][c].void = false;
+    }
+  }
+}
+
+
+function isNearStartPosition(r, c) {
+  const S = CONFIG.MAP_SIZE;
+  const starts = [[0,0],[0,S-1],[S-1,0],[S-1,S-1]];
+  return starts.some(([sr, sc]) => Math.abs(r-sr) <= 1 && Math.abs(c-sc) <= 1);
+}
+
+
+function isConnected() {
+  const S = CONFIG.MAP_SIZE;
+  let start = null;
+  for (let r = 0; r < S && !start; r++)
+    for (let c = 0; c < S && !start; c++)
+      if (!G.cells[r][c].void) start = [r, c];
+  if (!start) return false;
+
+
+  const visited = new Set();
+  const queue = [start];
+  visited.add(start[0]*S + start[1]);
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r+dr, nc = c+dc;
+      if (nr < 0 || nr >= S || nc < 0 || nc >= S) continue;
+      if (G.cells[nr][nc].void) continue;
+      const key = nr*S + nc;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      queue.push([nr, nc]);
+    }
+  }
+  let nonVoid = 0;
+  for (let r = 0; r < S; r++)
+    for (let c = 0; c < S; c++)
+      if (!G.cells[r][c].void) nonVoid++;
+  return visited.size === nonVoid;
+}
+
+
+function placeSpecialTerrains() {
+  const S = CONFIG.MAP_SIZE;
+  const E = CONFIG.CORNER_EXCLUSION;
+  const types = [
+    { type: TERRAIN.FERTILE,  count: CONFIG.SPECIAL_COUNT.fertile },
+    { type: TERRAIN.VEIN,     count: CONFIG.SPECIAL_COUNT.vein    },
+    { type: TERRAIN.CLIFF,    count: CONFIG.SPECIAL_COUNT.cliff   },
+  ];
+
+
+  for (const { type, count } of types) {
+    let placed = 0, tries = 0;
+    while (placed < count && tries < 3000) {
+      tries++;
+      const r = Math.floor(Math.random() * S);
+      const c = Math.floor(Math.random() * S);
+      if (G.cells[r][c].void) continue;
+      if (G.cells[r][c].terrain !== TERRAIN.NONE) continue;
+      const corners = [[0,0],[0,S-1],[S-1,0],[S-1,S-1]];
+      if (corners.some(([cr, cc]) =>
+        Math.abs(r-cr) < E && Math.abs(c-cc) < E)) continue;
+      G.cells[r][c].terrain = type;
+      placed++;
+    }
+  }
+}
+
+
+/* ============================================================
+   初期配置
+   ============================================================ */
+function placeStartingTerritories() {
+  const S = CONFIG.MAP_SIZE;
+  const positions = [[0,0],[0,S-1],[S-1,0],[S-1,S-1]];
+  G.factions.forEach((faction, i) => {
+    const [r, c] = positions[i];
+    const cell = G.cells[r][c];
+    cell.owner    = faction.id;
+    cell.building = BUILDING.SETTLEMENT;
+    cell.level    = 1;
+  });
+}
+
+
+/* ============================================================
+   領土数更新
+   ============================================================ */
+function updateTerritoryCount() {
+  const S = CONFIG.MAP_SIZE;
+  G.factions.forEach(f => f.territories = 0);
+  for (let r = 0; r < S; r++)
+    for (let c = 0; c < S; c++) {
+      const cell = G.cells[r][c];
+      if (cell.owner) {
+        const f = getFaction(cell.owner);
+        if (f) f.territories++;
+      }
+    }
+}
+
+
+function getFaction(id) {
+  return G.factions.find(f => f.id === id) || null;
+}
+function getCurrentFaction() {
+  return getFaction(G.activeFactions[G.turnIndex]);
+}
+function getFactionDef(id) {
+  return FACTION_DEFS.find(f => f.id === id) || FACTION_DEFS[0];
+}
+
+
+function getAdjCells(r, c) {
+  const S = CONFIG.MAP_SIZE;
+  const result = [];
+  for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    const nr = r+dr, nc = c+dc;
+    if (nr >= 0 && nr < S && nc >= 0 && nc < S && !G.cells[nr][nc].void)
+      result.push([nr, nc]);
+  }
+  return result;
+}
+
+
+/* ============================================================
+   資源計算 (修正箇所)
+   ============================================================ */
+function calcResourceBalance(factionId) {
+  const S = CONFIG.MAP_SIZE;
+  let foodProd = 0, foodCost = 0, oreProd = 0, oreCost = 0;
+
+
+  for (let r = 0; r < S; r++) {
+    for (let c = 0; c < S; c++) {
+      const cell = G.cells[r][c];
+      if (cell.void || cell.owner !== factionId) continue;
+
+
+      const lv = cell.level - 1;
+      const terrain = cell.terrain;
+
+
+      switch (cell.building) {
+        case BUILDING.SETTLEMENT: {
+          let fp = CONFIG.SETTLEMENT.FOOD_PROD;
+          if (terrain === TERRAIN.FERTILE) fp *= CONFIG.TERRAIN.FERTILE_MULT;
+          foodProd += fp;
+          // foodCostは加算しない (CONFIG.TERRITORY_FOOD_COST が 0 のため)
+          break;
+        }
+        case BUILDING.FARM: {
+          let fp = CONFIG.FARM.FOOD_PROD[lv];
+          if (terrain === TERRAIN.FERTILE) fp *= CONFIG.TERRAIN.FERTILE_MULT;
+          foodProd += fp;
+          break;
+        }
+        case BUILDING.MINE: {
+          let op = CONFIG.MINE.ORE_PROD[lv];
+          if (terrain === TERRAIN.VEIN) op *= CONFIG.TERRAIN.VEIN_MULT;
+          oreProd += op;
+          foodCost += CONFIG.MINE.FOOD_COST[lv]; // 鉱山のみ消費
+          break;
+        }
+        case BUILDING.FORTRESS: {
+          foodCost += CONFIG.FORTRESS.FOOD_COST[lv]; // 要塞のみ消費
+          oreCost  += CONFIG.FORTRESS.ORE_COST[lv];
+          break;
+        }
+        case BUILDING.NONE: {
+          break;
+        }
+      }
+    }
+  }
+
+
+  const reductions = calcAdjReductions(factionId);
+  foodCost = Math.max(0, foodCost - reductions.foodReduce);
+  oreCost  = Math.max(0, oreCost  - reductions.oreReduce);
+
+
+  return {
+    foodProd, foodCost, foodNet: foodProd - foodCost,
+    oreProd,  oreCost,  oreNet:  oreProd  - oreCost,
+  };
+}
+
+
+function calcAdjReductions(factionId) {
+  const S = CONFIG.MAP_SIZE;
+  let foodReduce = 0, oreReduce = 0;
+
+
+  for (let r = 0; r < S; r++) {
+    for (let c = 0; c < S; c++) {
+      const cell = G.cells[r][c];
+      if (cell.void || cell.owner !== factionId) continue;
+
+
+      const lv = cell.level - 1;
+
+
+      if (cell.building === BUILDING.FARM) {
+        const adjOwned = getAdjCells(r, c)
+          .filter(([nr, nc]) => G.cells[nr][nc].owner === factionId).length;
+        foodReduce += CONFIG.FARM.ADJ_REDUCE[lv] * adjOwned;
+      }
+      if (cell.building === BUILDING.MINE) {
+        const adjOwned = getAdjCells(r, c)
+          .filter(([nr, nc]) => G.cells[nr][nc].owner === factionId).length;
+        oreReduce += CONFIG.MINE.ADJ_REDUCE[lv] * adjOwned;
+      }
+    }
+  }
+  return { foodReduce, oreReduce };
+}
+
+
+function calcPowerBonus(r, c, isAttacker) {
+  const cell = G.cells[r][c];
+  let bonus = 0;
+  if (cell.terrain === TERRAIN.CLIFF) bonus += CONFIG.TERRAIN.CLIFF_POWER;
+  if (cell.building === BUILDING.FORTRESS) {
+    bonus += CONFIG.FORTRESS.SELF_POWER[cell.level - 1];
+  }
+  for (const [nr, nc] of getAdjCells(r, c)) {
+    const adj = G.cells[nr][nc];
+    if (adj.building === BUILDING.FORTRESS && adj.owner === cell.owner) {
+      bonus += CONFIG.FORTRESS.ADJ_POWER[adj.level - 1];
+    }
+  }
+  return bonus;
+}
+
+
+/* ============================================================
+   治安計算
+   ============================================================ */
+function calcSecurityDelta(factionId) {
+  const bal = calcResourceBalance(factionId);
+  const foodNet = bal.foodNet;
+  const oreNet  = bal.oreNet;
+
+
+  if (foodNet >= 0 && oreNet >= 0) {
+    return CONFIG.SECURITY.BOTH_POSITIVE;
+  }
+  let delta = 0;
+  if (foodNet < 0) delta -= Math.abs(foodNet) * CONFIG.SECURITY.PER_DEFICIT;
+  if (oreNet  < 0) delta -= Math.abs(oreNet)  * CONFIG.SECURITY.PER_DEFICIT;
+  return delta;
+}
+
+
+/* ============================================================
+   ターン処理
+   ============================================================ */
+function endTurn() {
+  const faction = getCurrentFaction();
+  if (!faction) return;
+
+
+  const bal = calcResourceBalance(faction.id);
+  faction.food += bal.foodNet;
+  faction.ore  += bal.oreNet;
+
+
+  const secDelta = calcSecurityDelta(faction.id);
+  faction.security = Math.min(
+    CONFIG.SECURITY.MAX,
+    faction.security + secDelta
+  );
+
+
+  checkDefeat(faction);
+  advanceTurn();
+}
+
+
+function checkDefeat(faction) {
+  if (faction.defeated) return;
+  let defeated = false;
+  let reason = '';
+
+
+  if (faction.territories <= 0) {
+    defeated = true; reason = '領土消滅';
+  } else if (faction.security < 0) {
+    defeated = true; reason = '治安崩壊';
+  }
+
+
+  if (!defeated) return;
+
+
+  faction.defeated = true;
+
+
+  if (reason === '治安崩壊') {
+    const S = CONFIG.MAP_SIZE;
+    for (let r = 0; r < S; r++)
+      for (let c = 0; c < S; c++) {
+        const cell = G.cells[r][c];
+        if (cell.owner === faction.id) {
+          cell.owner    = null;
+          cell.building = BUILDING.NONE;
+          cell.level    = 0;
+        }
+      }
+  }
+
+
+  G.activeFactions = G.activeFactions.filter(id => id !== faction.id);
+  if (G.turnIndex >= G.activeFactions.length) G.turnIndex = 0;
+
+
+  updateTerritoryCount();
+  showDefeatNotify(faction, reason);
+
+
+  if (G.activeFactions.length === 1) {
+    showVictory(getFaction(G.activeFactions[0]));
+  }
+}
+
+
+function advanceTurn() {
+  if (G.activeFactions.length === 0) return;
+  G.turnIndex = (G.turnIndex + 1) % G.activeFactions.length;
+  if (G.turnIndex === 0) G.globalTurn++;
+  G.actionDone = false;
+  G.selectedCell = null;
+  updateTerritoryCount();
+  renderAll();
+  showTurnNotify();
+}
+
+
+/* ============================================================
+   アクション
+   ============================================================ */
+function doExplore(r, c) {
+  const faction = getCurrentFaction();
+  const cell = G.cells[r][c];
+  if (cell.void || cell.owner !== null) return;
+
+
+  const hasAdj = getAdjCells(r, c).some(([nr, nc]) =>
+    G.cells[nr][nc].owner === faction.id
+  );
+  if (!hasAdj) { alert('自領に隣接していません'); return; }
+
+
+  cell.owner    = faction.id;
+  cell.building = BUILDING.SETTLEMENT;
+  cell.level    = 1;
+
+
+  G.actionDone = true;
+  updateTerritoryCount();
+  renderAll();
+  endTurn();
+}
+
+
+function doAttack(r, c) {
+  const attFaction = getCurrentFaction();
+  const cell = G.cells[r][c];
+  if (!cell.owner || cell.owner === attFaction.id) return;
+
+
+  const hasAdj = getAdjCells(r, c).some(([nr, nc]) =>
+    G.cells[nr][nc].owner === attFaction.id
+  );
+  if (!hasAdj) { alert('自領に隣接していません'); return; }
+
+
+  const defFaction = getFaction(cell.owner);
+  const adjOwnCells = getAdjCells(r, c).filter(([nr, nc]) =>
+    G.cells[nr][nc].owner === attFaction.id
+  );
+  let attBonus = 0;
+  for (const [ar, ac] of adjOwnCells) {
+    const b = calcPowerBonus(ar, ac, true);
+    if (b > attBonus) attBonus = b;
+  }
+  const defBonus = calcPowerBonus(r, c, false);
+
+
+  const attDice = Math.floor(Math.random() * 6) + 1;
+  const defDice = Math.floor(Math.random() * 6) + 1;
+  const attTotal = attDice + attBonus;
+  const defTotal = defDice + defBonus;
+  const success = attTotal >= defTotal;
+
+
+  showBattleModal(
+    attFaction, defFaction,
+    attDice, attBonus, attTotal,
+    defDice, defBonus, defTotal,
+    success,
+    () => {
+      if (success) {
+        cell.owner = attFaction.id;
+      }
+      G.actionDone = true;
+      updateTerritoryCount();
+      renderAll();
+      endTurn();
+    }
+  );
+}
+
+
+function doUpgrade(r, c, targetBuilding) {
+  const faction = getCurrentFaction();
+  const cell = G.cells[r][c];
+  if (cell.owner !== faction.id) return;
+
+
+  const maxLv = 3;
+
+
+  if (cell.building === targetBuilding) {
+    if (cell.level >= maxLv) { alert('最大レベルです'); return; }
+    cell.level++;
+  } else {
+    const oldLv = cell.level;
+    cell.building = targetBuilding;
+    cell.level = (oldLv >= maxLv) ? 2 : 1;
+  }
+
+
+  G.actionDone = true;
+  renderAll();
+  endTurn();
+}
+
+
+/* ============================================================
+   UI表示系
+   ============================================================ */
+function showBattleModal(attF, defF, attDice, attBonus, attTotal, defDice, defBonus, defTotal, success, callback) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const attDef = getFactionDef(attF.id);
+  const defDef = getFactionDef(defF.id);
+
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="min-width:380px">
+      <div class="modal-title">⚔ 戦闘結果</div>
+      <div id="battle-log">
+        <div>🗡 <b style="color:${attDef.color}">${attF.name}</b>（攻撃側）</div>
+        <div>ダイス: <span class="dice-result">🎲${attDice}</span> 補正: +${attBonus} 合計: <b>${attTotal}</b></div>
+        <div style="margin-top:6px">🛡 <b style="color:${defDef.color}">${defF.name}</b>（防御側）</div>
+        <div>ダイス: <span class="dice-result">🎲${defDice}</span> 補正: +${defBonus} 合計: <b>${defTotal}</b></div>
+        <div style="margin-top:10px;font-size:18px;font-weight:800;color:${success ? 'var(--positive)' : 'var(--negative)'}">
+          ${success ? '✅ 侵攻成功！' : '❌ 侵攻失敗'}
+        </div>
+      </div>
+      <button class="modal-btn primary-btn" id="battle-ok-btn">続ける</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#battle-ok-btn').addEventListener('click', () => {
+    overlay.remove();
+    callback();
+  });
+}
+
+
+function showDefeatNotify(faction, reason) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="text-align:center">
+      <div class="modal-title" style="color:var(--negative)">💀 ${faction.name} 敗北</div>
+      <p style="color:var(--text3);margin-bottom:16px">原因: ${reason}</p>
+      <button class="modal-btn" id="defeat-ok">続ける</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#defeat-ok').addEventListener('click', () => overlay.remove());
+}
+
+
+function showVictory(faction) {
+  const fd = getFactionDef(faction.id);
+  const ov = document.getElementById('gameover-overlay');
+  ov.style.display = 'flex';
+  document.getElementById('gameover-title').textContent = `🏆 ${faction.name} の勝利！`;
+  document.getElementById('gameover-title').style.color = fd.color;
+  document.getElementById('gameover-sub').textContent = `ターン ${G.globalTurn} で全陣営を制圧しました`;
+  ov.classList.add('show');
+}
+
+
+function showTurnNotify() {
+  const faction = getCurrentFaction();
+  if (!faction) return;
+  const fd = getFactionDef(faction.id);
+  const el = document.getElementById('turn-notify');
+  el.style.borderColor = fd.color;
+  el.innerHTML = `<div style="color:${fd.color};margin-bottom:4px">${fd.emoji} ${faction.name} のターン</div>
+    <div style="font-size:14px;color:var(--text3)">ターン ${G.globalTurn}</div>`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+
+function showMenu() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="text-align:center">
+      <div class="modal-title">メニュー</div>
+      <button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">戻る</button>
+      <button class="modal-btn" onclick="location.reload()" style="margin-top:6px">タイトルへ</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+
+/* ============================================================
+   描画
+   ============================================================ */
+const CELL = CONFIG.CELL_SIZE;
+const PAD  = 2;
+
+
+function renderAll() {
+  renderHeader();
+  renderSidebar();
+  renderMap();
+  if (G.selectedCell) {
+    renderInfoPanel(G.selectedCell.r, G.selectedCell.c);
+  }
+  renderInfluenceLines();
+}
+
+
+function renderHeader() {
+  const faction = getCurrentFaction();
+  if (!faction) return;
+  const fd = getFactionDef(faction.id);
+  const icon = document.getElementById('current-player-icon');
+  icon.textContent = fd.emoji;
+icon.style.background = '#f3e8d7';
+icon.style.border = `1px solid ${fd.border}`;
+
+
+  document.getElementById('current-player-name').textContent = `${faction.name}の番`;
+  document.getElementById('current-player-name').style.color = fd.color;
+  document.getElementById('turn-number').textContent = G.globalTurn;
+  const sec = Math.max(0, faction.security);
+  document.getElementById('security-pct').textContent = `${Math.round(sec)}%`;
+  const bar = document.getElementById('security-bar');
+  bar.style.width = sec + '%';
+  bar.style.background = sec > 60 ? 'var(--positive)' : sec > 30 ? 'var(--gold)' : 'var(--negative)';
+  const bal = calcResourceBalance(faction.id);
+  const fd_el = document.getElementById('food-delta');
+  fd_el.textContent = (bal.foodNet >= 0 ? '+' : '') + bal.foodNet;
+  fd_el.className = 'resource-delta ' + (bal.foodNet >= 0 ? 'pos' : 'neg');
+  document.getElementById('food-detail').textContent = `生産 ${bal.foodProd} − 消費 ${bal.foodCost}`;
+  const od_el = document.getElementById('ore-delta');
+  od_el.textContent = (bal.oreNet >= 0 ? '+' : '') + bal.oreNet;
+  od_el.className = 'resource-delta ' + (bal.oreNet >= 0 ? 'pos' : 'neg');
+  document.getElementById('ore-detail').textContent = `生産 ${bal.oreProd} − 消費 ${bal.oreCost}`;
+}
+
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  G.factions.forEach(faction => {
+    const fd = getFactionDef(faction.id);
+    const bal = calcResourceBalance(faction.id);
+    const isActive = G.activeFactions[G.turnIndex] === faction.id;
+    const div = document.createElement('div');
+    div.className = 'faction-card' + (faction.defeated ? ' defeated' : '') + (isActive ? ' active-turn' : '');
+ div.style.background = '#fff8ef';
+div.style.borderColor = fd.border;
+
+
+    const isYou = faction.id === 'green';
+    div.innerHTML = `
+      <div class="faction-card-header">
+        <div class="faction-badge" style="background:${fd.color}30;border:1px solid ${fd.color}60;color:${fd.color}">${fd.emoji}</div>
+        <div>
+          <div class="faction-card-name" style="color:${fd.color}">${faction.name}</div>
+          ${isYou ? '<div class="faction-card-you">（あなた）</div>' : ''}
+        </div>
+        ${isActive ? `<div style="margin-left:auto;font-size:10px;color:${fd.color}">▶</div>` : ''}
+      </div>
+      ${faction.defeated ? '<div style="font-size:11px;color:var(--negative);text-align:center">💀 敗北</div>' : `
+      <div class="faction-stats">
+        <div class="faction-stat">
+          <span class="faction-stat-label">領土</span>
+          <span class="faction-stat-value">${faction.territories}</span>
+        </div>
+        <div class="faction-stat">
+          <span class="faction-stat-label">治安</span>
+          <span class="faction-stat-value" style="color:${faction.security > 60 ? 'var(--positive)' : faction.security > 30 ? 'var(--gold)' : 'var(--negative)'}">${Math.round(faction.security)}%</span>
+        </div>
+        <div class="faction-stat">
+          <span class="faction-stat-label">食糧</span>
+          <span class="faction-stat-value ${bal.foodNet >= 0 ? 'pos' : 'neg'}">${bal.foodNet >= 0 ? '+' : ''}${bal.foodNet}</span>
+        </div>
+        <div class="faction-stat">
+          <span class="faction-stat-label">鉱石</span>
+          <span class="faction-stat-value ${bal.oreNet >= 0 ? 'pos' : 'neg'}">${bal.oreNet >= 0 ? '+' : ''}${bal.oreNet}</span>
+        </div>
+      </div>
+      `}
+    `;
+    sidebar.appendChild(div);
+  });
+}
+
+
+function renderMap() {
+  const S = CONFIG.MAP_SIZE;
+  const canvas = document.getElementById('map-canvas');
+  const totalSize = S * CELL + PAD * 2;
+  canvas.width  = totalSize;
+  canvas.height = totalSize;
+  const svg = document.getElementById('influence-svg');
+  svg.setAttribute('width',  totalSize);
+  svg.setAttribute('height', totalSize);
+  svg.setAttribute('viewBox', `0 0 ${totalSize} ${totalSize}`);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < S; r++) {
+    for (let c = 0; c < S; c++) {
+      drawCell(ctx, r, c);
+    }
+  }
+}
+
+
+function cellX(c) { return PAD + c * CELL; }
+function cellY(r) { return PAD + r * CELL; }
+
+
+function drawCell(ctx, r, c) {
+  const cell = G.cells[r][c];
+  const x = cellX(c), y = cellY(r);
+  const sel = G.selectedCell && G.selectedCell.r === r && G.selectedCell.c === c;
+
+
+  if (cell.void) {
+  ctx.fillStyle = '#d8d0c4';
+    ctx.fillRect(x, y, CELL, CELL);
+ctx.strokeStyle = '#b8aea0';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
+    return;
+  }
+
+
+ let bg = '#f3eadc';
+  if (cell.owner) {
+    const fd = getFactionDef(cell.owner);
+    bg = fd.bg;
+  }
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, CELL, CELL);
+
+
+  if (cell.terrain !== TERRAIN.NONE) {
+    ctx.fillStyle = terrainBgColor(cell.terrain);
+    ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+  }
+
+
+  if (sel) {
+    ctx.fillStyle = '#efe6d8';
+    ctx.fillRect(x, y, CELL, CELL);
+  }
+
+
+ ctx.strokeStyle = cell.owner ? getFactionDef(cell.owner).border : '#c8b08f';
+  ctx.lineWidth = sel ? 2.5 : 1;
+  if (sel) ctx.strokeStyle = '#ffffff80';
+  ctx.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
+
+
+  if (cell.building !== BUILDING.NONE) {
+    ctx.font = `${CELL * 0.38}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(BUILDING_ICONS[cell.building], x + CELL / 2, y + CELL / 2 - 4);
+
+
+    if (cell.level > 1 || cell.building !== BUILDING.SETTLEMENT) {
+      ctx.font = `bold ${CELL * 0.18}px sans-serif`;
+      ctx.fillStyle = '#5f5345';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`Lv${cell.level}`, x + CELL - 3, y + CELL - 2);
+    }
+  }
+
+
+  if (cell.terrain !== TERRAIN.NONE) {
+    ctx.font = `${CELL * 0.22}px serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(TERRAIN_ICONS[cell.terrain], x + CELL - 2, y + 2);
+  }
+
+
+  if (cell.owner) {
+    const fd = getFactionDef(cell.owner);
+    ctx.fillStyle = fd.color;
+    ctx.fillRect(x + 4, y + CELL - 5, CELL - 8, 3);
+  }
+}
+
+
+function terrainBgColor(terrain) {
+  switch (terrain) {
+case TERRAIN.FERTILE: return '#dfead8';
+case TERRAIN.VEIN:    return '#dce8f4';
+case TERRAIN.CLIFF:   return '#ddd2c8';
+    default: return 'transparent';
+  }
+}
+
+
+function renderInfluenceLines() {
+  const svg = document.getElementById('influence-svg');
+  svg.innerHTML = '';
+  const S = CONFIG.MAP_SIZE;
+  for (let r = 0; r < S; r++) {
+    for (let c = 0; c < S; c++) {
+      const cell = G.cells[r][c];
+      if (cell.void || !cell.owner) continue;
+      if (cell.building === BUILDING.FARM) {
+        for (const [nr, nc] of getAdjCells(r, c)) {
+          if (G.cells[nr][nc].owner === cell.owner) drawInfluenceLine(svg, r, c, nr, nc, '#4caf5099');
+        }
+      }
+      if (cell.building === BUILDING.MINE) {
+        for (const [nr, nc] of getAdjCells(r, c)) {
+          if (G.cells[nr][nc].owner === cell.owner) drawInfluenceLine(svg, r, c, nr, nc, '#2196f399');
+        }
+      }
+      if (cell.building === BUILDING.FORTRESS) {
+        for (const [nr, nc] of getAdjCells(r, c)) {
+          if (G.cells[nr][nc].owner === cell.owner) drawInfluenceLine(svg, r, c, nr, nc, '#ff980099');
+        }
+      }
+    }
+  }
+}
+
+
+function drawInfluenceLine(svg, r1, c1, r2, c2, color) {
+  const x1 = cellX(c1) + CELL / 2;
+  const y1 = cellY(r1) + CELL / 2;
+  const x2 = cellX(c2) + CELL / 2;
+  const y2 = cellY(r2) + CELL / 2;
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '4 3');
+  svg.appendChild(line);
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const ux = dx/len, uy = dy/len;
+  const ax = x2 - ux * 10, ay = y2 - uy * 10;
+  const perp = [-uy * 4, ux * 4];
+  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  arrow.setAttribute('points', `${x2},${y2} ${ax+perp[0]},${ay+perp[1]} ${ax-perp[0]},${ay-perp[1]}`);
+  arrow.setAttribute('fill', color);
+  svg.appendChild(arrow);
+}
+
+
+function renderInfoPanel(r, c) {
+  const cell = G.cells[r][c];
+  const body = document.getElementById('info-panel-body');
+  const actions = document.getElementById('action-buttons');
+  actions.innerHTML = '';
+  if (cell.void) {
+    body.innerHTML = `<p style="color:var(--text3);font-size:12px;margin-top:20px;text-align:center">欠落マス</p>`;
+    return;
+  }
+  const ownerFd = cell.owner ? getFactionDef(cell.owner) : null;
+  const ownerF  = cell.owner ? getFaction(cell.owner) : null;
+  let buildingInfo = '';
+  const lv = cell.level;
+  const lv0 = lv - 1;
+
+
+  if (cell.building === BUILDING.FARM && lv > 0) {
+    const fp = CONFIG.FARM.FOOD_PROD[lv0] * (cell.terrain === TERRAIN.FERTILE ? 2 : 1);
+    buildingInfo = `
+      <div class="info-row"><span class="info-label">食糧生産</span><span class="info-value pos">+${fp}</span></div>
+      <div class="info-row"><span class="info-label">周囲食糧軽減</span><span class="info-value pos">-${CONFIG.FARM.ADJ_REDUCE[lv0]}</span></div>
+    `;
+  } else if (cell.building === BUILDING.MINE && lv > 0) {
+    const op = CONFIG.MINE.ORE_PROD[lv0] * (cell.terrain === TERRAIN.VEIN ? 2 : 1);
+    buildingInfo = `
+      <div class="info-row"><span class="info-label">鉱石生産</span><span class="info-value pos">+${op}</span></div>
+      <div class="info-row"><span class="info-label">食糧消費</span><span class="info-value neg">-${CONFIG.MINE.FOOD_COST[lv0]}</span></div>
+    `;
+  } else if (cell.building === BUILDING.FORTRESS && lv > 0) {
+    buildingInfo = `
+      <div class="info-row"><span class="info-label">戦力補正（自身）</span><span class="info-value pos">+${CONFIG.FORTRESS.SELF_POWER[lv0]}</span></div>
+      <div class="info-row"><span class="info-label">食糧消費</span><span class="info-value neg">-${CONFIG.FORTRESS.FOOD_COST[lv0]}</span></div>
+      <div class="info-row"><span class="info-label">鉱石消費</span><span class="info-value neg">-${CONFIG.FORTRESS.ORE_COST[lv0]}</span></div>
+    `;
+  } else if (cell.building === BUILDING.SETTLEMENT) {
+    buildingInfo = `<div class="info-row"><span class="info-label">食糧生産</span><span class="info-value pos">+${CONFIG.SETTLEMENT.FOOD_PROD}</span></div>`;
+  }
+
+
+  body.innerHTML = `
+    <div class="info-row"><span class="info-label">座標</span><span class="info-value">(${c}, ${r})</span></div>
+    <div class="info-row"><span class="info-label">所有者</span><span class="info-value" style="color:${ownerFd ? ownerFd.color : 'var(--text3)'}">${ownerFd ? ownerFd.emoji + ' ' + (ownerF ? ownerF.name : ownerFd.name) : '未開拓'}</span></div>
+    <div class="info-building-header" style="margin-top:10px">
+      <div class="info-building-icon">${BUILDING_ICONS[cell.building]}</div>
+      <div><div class="info-building-name">${BUILDING_NAMES[cell.building]}</div>${cell.building !== BUILDING.NONE && cell.building !== BUILDING.SETTLEMENT ? `<div class="info-building-lv">Lv.${cell.level}</div>` : ''}</div>
+    </div>
+    ${buildingInfo}
+    <div class="info-section-title">地形効果</div>
+    <div class="info-row"><span class="info-label">${TERRAIN_NAMES[cell.terrain]}</span><span class="info-value">${terrainEffectText(cell.terrain)}</span></div>
+  `;
+  renderActionButtons(r, c);
+}
+
+
+function terrainEffectText(terrain) {
+  switch (terrain) {
+    case TERRAIN.FERTILE: return '食糧生産×2';
+    case TERRAIN.VEIN:    return '鉱石生産×2';
+    case TERRAIN.CLIFF:   return `戦力+${CONFIG.TERRAIN.CLIFF_POWER}`;
+    default: return '—';
+  }
+}
+
+
+function renderActionButtons(r, c) {
+  const actions = document.getElementById('action-buttons');
+  actions.innerHTML = '';
+  if (G.actionDone) return;
+  const faction = getCurrentFaction();
+  const cell    = G.cells[r][c];
+  if (!faction) return;
+  const isOwn   = cell.owner === faction.id;
+  const isEmpty = !cell.owner && !cell.void;
+  const isEnemy = cell.owner && cell.owner !== faction.id;
+  const adjToOwn = getAdjCells(r, c).some(([nr, nc]) => G.cells[nr][nc].owner === faction.id);
+
+
+  if (isEmpty && adjToOwn) {
+    const btn = document.createElement('button');
+    btn.className = 'action-btn primary';
+    btn.textContent = '🏘 このマスを開拓';
+    btn.onclick = () => doExplore(r, c);
+    actions.appendChild(btn);
+  }
+  if (isEnemy && adjToOwn) {
+    const btn = document.createElement('button');
+    btn.className = 'action-btn danger';
+    btn.textContent = `⚔ 侵攻する`;
+    btn.onclick = () => doAttack(r, c);
+    actions.appendChild(btn);
+  }
+  if (isOwn) {
+    if (cell.building === BUILDING.SETTLEMENT || cell.building === BUILDING.NONE) {
+      addBuildBtn(actions, r, c, BUILDING.FARM, '🌾 農場に変換', 'primary');
+      addBuildBtn(actions, r, c, BUILDING.MINE, '⛏ 鉱山に変換', 'warning');
+      addBuildBtn(actions, r, c, BUILDING.FORTRESS, '🏰 要塞に変換', 'danger');
+    } else {
+      if (cell.level < 3) {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn primary';
+        btn.textContent = `⬆ Lv${cell.level} → Lv${cell.level + 1} に強化`;
+        btn.onclick = () => doUpgrade(r, c, cell.building);
+        actions.appendChild(btn);
+      }
+      [BUILDING.FARM, BUILDING.MINE, BUILDING.FORTRESS].filter(b => b !== cell.building).forEach(b => {
+        addBuildBtn(actions, r, c, b, `🔄 ${BUILDING_NAMES[b]}に変換`, 'warning');
+      });
+    }
+  }
+}
+
+
+function addBuildBtn(container, r, c, building, label, cls) {
+  const btn = document.createElement('button');
+  btn.className = `action-btn ${cls}`;
+  btn.textContent = label;
+  btn.onclick = () => doUpgrade(r, c, building);
+  container.appendChild(btn);
+}
+
+
+function closeInfoPanel() {
+  G.selectedCell = null;
+  document.getElementById('info-panel-body').innerHTML = `<p style="color:var(--text3);font-size:12px;margin-top:20px;text-align:center">マスをクリックしてください</p>`;
+  document.getElementById('action-buttons').innerHTML = '';
+  renderMap();
+}
+
+
+document.getElementById('map-canvas').addEventListener('click', e => {
+  const rect = e.target.getBoundingClientRect();
+  const c = Math.floor((e.clientX - rect.left - PAD) / CELL);
+  const r = Math.floor((e.clientY - rect.top - PAD) / CELL);
+  if (r < 0 || r >= CONFIG.MAP_SIZE || c < 0 || c >= CONFIG.MAP_SIZE || G.cells[r][c].void) return;
+  G.selectedCell = { r, c };
+  renderAll();
+});
+
+
+initSetup();
+</script>
+</body>
+</html>
