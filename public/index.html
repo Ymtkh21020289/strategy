@@ -700,7 +700,7 @@ socket.on('update_state', (newState) => {
         renderAll();
         // 必要に応じてターンの通知を出す
         if (document.getElementById('turn-notify')) {
-            // showTurnNotify(); // UI更新関数があれば呼び出す
+            showTurnNotify(); // UI更新関数があれば呼び出す
         }
     }
 });
