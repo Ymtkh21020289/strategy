@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/socket.io/socket.io.js"></script>
 <title>領土戦略ゲーム</title>
 <style>
 /* ============================================================
@@ -685,6 +686,15 @@ background: #cfc6b8;
    定数 / バランス設定
    ここを変更することでゲームバランスを調整できる
    ============================================================ */
+const socket = io();
+
+// サーバーから最新のゲーム状態を受け取ったら画面を更新
+socket.on('update_state', (newState) => {
+    G = newState; // 現在のゲーム状態(G)を上書き
+    renderMap();  // 画面を描画し直す
+    updateUI();   // リソースなどのUIを更新
+});
+   
 const CONFIG = {
   MAP_SIZE: 7,            // マップ縦横サイズ (9から7に変更)
   VOID_RATE: 0.15,        // 欠落マス率
@@ -1227,6 +1237,7 @@ function endTurn() {
   );
 
 
+  socket.emit('player_action', G);
   checkDefeat(faction);
   advanceTurn();
 }
