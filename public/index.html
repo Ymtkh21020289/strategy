@@ -705,6 +705,14 @@ socket.on('update_state', (newState) => {
     }
 });
 
+socket.on('show_battle_modal', (data) => {
+    // 陣地の書き換えなどは攻撃者の通信(update_state)で行われるため、
+    // 見ている側（他の人）の「閉じる」ボタンはただ画面を消すだけ（空の関数）にする
+    showBattleModal(data.attackStr, data.defenseStr, data.attackerRoll, data.defenderRoll, () => {
+        // 何もしない（攻撃者が閉じて sync_state してくれるのを待つ）
+    });
+});
+
 // 自分の操作結果をサーバーへ送るための専用関数
 function broadcastState() {
     socket.emit('sync_state', G);
