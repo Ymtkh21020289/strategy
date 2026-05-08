@@ -1,9 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/socket.io/socket.io.js"></script>
 <title>領土戦略ゲーム</title>
 <style>
 /* ============================================================
@@ -257,6 +256,7 @@ body {
 #map-canvas {
   display: block;
   image-rendering: pixelated;
+  background: transparent; /* 欠落マスが完全に透明になるよう背景を透明に */
 }
 /* 影響線SVGオーバーレイ */
 #influence-svg {
@@ -555,6 +555,7 @@ background: #cfc6b8;
 .neg { color: var(--negative); }
 .neu { color: var(--neutral); }
 </style>
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
@@ -665,6 +666,7 @@ background: #cfc6b8;
   <div class="legend-item"><span class="legend-icon">🌾</span>農場</div>
   <div class="legend-item"><span class="legend-icon">⛏</span>鉱山</div>
   <div class="legend-item"><span class="legend-icon">🏰</span>要塞</div>
+  <span style="color:var(--text3);margin:0 4px">|</span>
   <div class="legend-item"><span class="legend-icon">🌿</span>肥沃な土地</div>
   <div class="legend-item"><span class="legend-icon">💎</span>鉱脈</div>
   <div class="legend-item"><span class="legend-icon">🪨</span>断崖</div>
@@ -688,12 +690,25 @@ background: #cfc6b8;
    ============================================================ */
 const socket = io();
 
-// サーバーから最新のゲーム状態を受け取ったら画面を更新
+// サーバーから他の人の操作結果を受信したときの処理
 socket.on('update_state', (newState) => {
-    G = newState; // 現在のゲーム状態(G)を上書き
-    renderMap();  // 画面を描画し直す
-    updateUI();   // リソースなどのUIを更新
+    G = newState; // 自分のゲームデータを最新に上書き
+    
+    // ゲームが既に始まっている状態なら、スタート画面を消して再描画
+    if (G.activeFactions && G.activeFactions.length > 0) {
+        document.getElementById('setup-overlay').style.display = 'none';
+        renderAll();
+        // 必要に応じてターンの通知を出す
+        if (document.getElementById('turn-notify')) {
+            // showTurnNotify(); // UI更新関数があれば呼び出す
+        }
+    }
 });
+
+// 自分の操作結果をサーバーへ送るための専用関数
+function broadcastState() {
+    socket.emit('sync_state', G);
+}
    
 const CONFIG = {
   MAP_SIZE: 7,            // マップ縦横サイズ (9から7に変更)
@@ -869,6 +884,7 @@ function startGame() {
   }
   document.getElementById('setup-overlay').style.display = 'none';
   initGame();
+  broadcastState();
 }
 
 
@@ -1224,11 +1240,9 @@ function endTurn() {
   const faction = getCurrentFaction();
   if (!faction) return;
 
-
   const bal = calcResourceBalance(faction.id);
   faction.food += bal.foodNet;
   faction.ore  += bal.oreNet;
-
 
   const secDelta = calcSecurityDelta(faction.id);
   faction.security = Math.min(
@@ -1236,10 +1250,13 @@ function endTurn() {
     faction.security + secDelta
   );
 
-
-  socket.emit('player_action', G);
   checkDefeat(faction);
+
+  // 勝敗が決した（生存陣営が1以下）場合はターンを進めない
+  if (G.activeFactions.length <= 1) return;
+
   advanceTurn();
+  broadcastState();
 }
 
 
@@ -1248,6 +1265,7 @@ function checkDefeat(faction) {
   let defeated = false;
   let reason = '';
 
+  updateTerritoryCount(); // 最新の領土数で判定
 
   if (faction.territories <= 0) {
     defeated = true; reason = '領土消滅';
@@ -1255,12 +1273,9 @@ function checkDefeat(faction) {
     defeated = true; reason = '治安崩壊';
   }
 
-
   if (!defeated) return;
 
-
   faction.defeated = true;
-
 
   if (reason === '治安崩壊') {
     const S = CONFIG.MAP_SIZE;
@@ -1275,14 +1290,26 @@ function checkDefeat(faction) {
       }
   }
 
+  // 現在のターンIndex位置（脱落する陣営のindex）を記録
+  const defeatedIndex = G.activeFactions.indexOf(faction.id);
 
+  // 脱落陣営をリストから除去
   G.activeFactions = G.activeFactions.filter(id => id !== faction.id);
-  if (G.turnIndex >= G.activeFactions.length) G.turnIndex = 0;
 
+  // turnIndexを補正:
+  // ・脱落した陣営が現在ターンより前にいた場合 → indexが1つずれるので-1
+  // ・脱落した陣営が現在ターン以降の場合     → indexはそのままでOK
+  // ・これにより advanceTurn の +1 で正しく次のプレイヤーに移る
+  if (defeatedIndex < G.turnIndex) {
+    G.turnIndex = Math.max(0, G.turnIndex - 1);
+  }
+  // 範囲外になった場合はラップ
+  if (G.activeFactions.length > 0 && G.turnIndex >= G.activeFactions.length) {
+    G.turnIndex = 0;
+  }
 
   updateTerritoryCount();
   showDefeatNotify(faction, reason);
-
 
   if (G.activeFactions.length === 1) {
     showVictory(getFaction(G.activeFactions[0]));
@@ -1368,11 +1395,17 @@ function doAttack(r, c) {
     () => {
       if (success) {
         cell.owner = attFaction.id;
+        updateTerritoryCount();
+        // 侵攻成功直後に相手の領土0チェック（ここで敗北処理が走る場合がある）
+        checkDefeat(defFaction);
       }
       G.actionDone = true;
       updateTerritoryCount();
       renderAll();
-      endTurn();
+      // ゲーム終了していなければターンを進める
+      if (G.activeFactions.length > 1) {
+        endTurn();
+      }
     }
   );
 }
@@ -1615,69 +1648,62 @@ function drawCell(ctx, r, c) {
   const x = cellX(c), y = cellY(r);
   const sel = G.selectedCell && G.selectedCell.r === r && G.selectedCell.c === c;
 
+  // 欠落マスは完全に描画しない（透明のまま）
+  if (cell.void) return;
 
-  if (cell.void) {
-  ctx.fillStyle = '#d8d0c4';
-    ctx.fillRect(x, y, CELL, CELL);
-ctx.strokeStyle = '#b8aea0';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
-    return;
-  }
-
-
- let bg = '#f3eadc';
-  if (cell.owner) {
-    const fd = getFactionDef(cell.owner);
-    bg = fd.bg;
-  }
+  // --- 背景（通常の四角で塗りつぶし） ---
+  const bg = cell.owner ? getFactionDef(cell.owner).bg : '#ede4d3';
   ctx.fillStyle = bg;
   ctx.fillRect(x, y, CELL, CELL);
 
-
-  if (cell.terrain !== TERRAIN.NONE) {
-    ctx.fillStyle = terrainBgColor(cell.terrain);
-    ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
-  }
-
-
+  // 選択ハイライト
   if (sel) {
-    ctx.fillStyle = '#efe6d8';
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
     ctx.fillRect(x, y, CELL, CELL);
   }
 
-
- ctx.strokeStyle = cell.owner ? getFactionDef(cell.owner).border : '#c8b08f';
-  ctx.lineWidth = sel ? 2.5 : 1;
-  if (sel) ctx.strokeStyle = '#ffffff80';
+  // --- 枠線：通常の四角枠（全マス共通） ---
+  const borderColor = sel
+    ? '#ffffff80'
+    : cell.owner ? getFactionDef(cell.owner).border : '#c8b08f';
+  const borderWidth = sel ? 2.5 : 1.5;
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth   = borderWidth;
   ctx.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
 
+  // --- 特殊地形：左上に絵文字アイコンを表示 ---
+  if (cell.terrain !== TERRAIN.NONE) {
+    const terrainEmoji = {
+      [TERRAIN.FERTILE]: '🌿',
+      [TERRAIN.VEIN]:    '💎',
+      [TERRAIN.CLIFF]:   '🪨',
+    }[cell.terrain];
+    ctx.save();
+    ctx.globalAlpha = cell.owner ? 0.85 : 1.0;
+    ctx.font = `${CELL * 0.28}px serif`;
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(terrainEmoji, x + 2, y + 2);
+    ctx.restore();
+  }
 
+  // --- 建物アイコン ---
   if (cell.building !== BUILDING.NONE) {
     ctx.font = `${CELL * 0.38}px serif`;
-    ctx.textAlign = 'center';
+    ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(BUILDING_ICONS[cell.building], x + CELL / 2, y + CELL / 2 - 4);
+    ctx.fillText(BUILDING_ICONS[cell.building], x + CELL / 2, y + CELL / 2 - 2);
 
-
-    if (cell.level > 1 || cell.building !== BUILDING.SETTLEMENT) {
-      ctx.font = `bold ${CELL * 0.18}px sans-serif`;
-      ctx.fillStyle = '#5f5345';
-      ctx.textAlign = 'right';
+    if (cell.building !== BUILDING.SETTLEMENT) {
+      ctx.font         = `bold ${CELL * 0.18}px sans-serif`;
+      ctx.fillStyle    = '#5f5345';
+      ctx.textAlign    = 'right';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`Lv${cell.level}`, x + CELL - 3, y + CELL - 2);
     }
   }
 
-
-  if (cell.terrain !== TERRAIN.NONE) {
-    ctx.font = `${CELL * 0.22}px serif`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText(TERRAIN_ICONS[cell.terrain], x + CELL - 2, y + 2);
-  }
-
-
+  // --- 陣営カラーバー（下部） ---
   if (cell.owner) {
     const fd = getFactionDef(cell.owner);
     ctx.fillStyle = fd.color;
