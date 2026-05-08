@@ -3,24 +3,24 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-// publicフォルダ内のHTMLを公開する
+// publicフォルダのファイルをブラウザに返す
 app.use(express.static('public'));
 
-// プレイヤーの接続管理とゲーム状態の同期
-let gameState = null; // ゲームの進行データ(Gオブジェクトなど)を保持
+let gameState = null; // ゲームの全体状態を保存
 
 io.on('connection', (socket) => {
     console.log('プレイヤーが接続しました:', socket.id);
 
-    // 新しく接続した人に現在の状態を送信
+    // あとから接続してきた人（2人目以降）に現在のマップ状態を送る
     if (gameState) {
         socket.emit('update_state', gameState);
     }
 
-    // プレイヤーからのアクション（攻撃や建設など）を受信
-    socket.on('player_action', (newData) => {
-        gameState = newData; // 状態を更新
-        io.emit('update_state', gameState); // 全員に最新状態を同期
+    // 誰かが操作した最新のゲーム状態を受け取る
+    socket.on('sync_state', (newState) => {
+        gameState = newState;
+        // 「操作した本人以外」の全員の画面に変更を反映（ブロードキャスト）
+        socket.broadcast.emit('update_state', gameState);
     });
 });
 
