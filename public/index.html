@@ -1398,6 +1398,8 @@ function doAttack(r, c) {
   const success = attTotal >= defTotal;
 
   socket.emit('battle_event', {
+  attFAction: attFaction,
+  defFaction: defFaction,
   attTotal: attTotal,
   defTotal: defTotal,
   attDice: attDice,
