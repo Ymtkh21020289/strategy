@@ -1487,7 +1487,9 @@ function showBattleModal(attF, defF, attDice, attBonus, attTotal, defDice, defBo
   document.body.appendChild(overlay);
   overlay.querySelector('#battle-ok-btn').addEventListener('click', () => {
     overlay.remove();
-    callback();
+    if (callback){
+      callback();
+    }
   });
 }
 
