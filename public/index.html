@@ -1401,10 +1401,14 @@ function doAttack(r, c) {
   const adjOwnCells = getAdjCells(r, c).filter(([nr, nc]) =>
     G.cells[nr][nc].owner === attFaction.id
   );
-  const originalOwner = G.cells[r][c].owner;
-  G.cells[r][c].owner = attFaction.id; // 一瞬だけ自分のマスにする
+  const targetCell = G.cells[r][c];
+  const originalOwner = targetCell.owner;
+  const originalBuilding = targetCell.building;
+  targetCell.owner = attFaction.id; // 一瞬だけ自分のマスにする
+  targetCell.building = null;
   const attBonus = calcPowerBonus(r, c, true); // その状態で補正を計算
-  G.cells[r][c].owner = originalOwner; // すぐに元の持ち主に戻す
+  taegetCell.owner = originalOwner; // すぐに元の持ち主に戻す
+  targetCell.building = originalBuilding;
   const defBonus = calcPowerBonus(r, c, false);
 
 
