@@ -1867,7 +1867,7 @@ function renderInfoPanel(r, c) {
   }
   const currentBonus = calcPowerBonus(r, c, false);
   if (currentBonus > 0) {
-    buildingInfo += `<div class="info-row"><span class="info-label">戦力補正（周囲）</span><span class="info-value neg">-${currentBonus}</span></div>`;
+    buildingInfo += `<div class="info-row"><span class="info-label">戦力補正（周囲）</span><span class="info-value pos">+${currentBonus}</span></div>`;
   }
 
   body.innerHTML = `
