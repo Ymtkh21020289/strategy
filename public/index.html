@@ -703,6 +703,7 @@ socket.on('update_state', (newState) => {
             showTurnNotify(); // UI更新関数があれば呼び出す
         }
     }
+    renderLogs();
 });
 
 socket.on('show_battle_modal', (data) => {
@@ -1221,9 +1222,23 @@ function calcPowerBonus(r, c, isAttacker) {
       bonus += CONFIG.FORTRESS.ADJ_POWER[adj.level - 1];
     }
   }
+  bonus = Math.min(bonus,5);
   return bonus;
 }
 
+function addLog(msg) {
+    if (!G.logs) G.logs = []; // ログ配列がなければ作成
+    G.logs.push(msg);
+    if (G.logs.length > 30) G.logs.shift(); // 最大30件まで保持
+    renderLogs();
+}
+
+function renderLogs() {
+    const list = document.getElementById('log-list');
+    if (!list || !G.logs) return;
+    list.innerHTML = G.logs.map(l => `<li style="margin-bottom: 4px; border-bottom: 1px dashed #ccc; padding-bottom: 2px;">${l}</li>`).join('');
+    list.parentElement.scrollTop = list.parentElement.scrollHeight; // 常に最新(一番下)を表示
+}
 
 /* ============================================================
    治安計算
@@ -1383,11 +1398,10 @@ function doAttack(r, c) {
   const adjOwnCells = getAdjCells(r, c).filter(([nr, nc]) =>
     G.cells[nr][nc].owner === attFaction.id
   );
-  let attBonus = 0;
-  for (const [ar, ac] of adjOwnCells) {
-    const b = calcPowerBonus(ar, ac, true);
-    if (b > attBonus) attBonus = b;
-  }
+  const originalOwner = G.cells[r][c].owner;
+  G.cells[r][c].owner = attFaction.id; // 一瞬だけ自分のマスにする
+  const attBonus = calcPowerBonus(r, c, true); // その状態で補正を計算
+  G.cells[r][c].owner = originalOwner; // すぐに元の持ち主に戻す
   const defBonus = calcPowerBonus(r, c, false);
 
 
@@ -1418,9 +1432,21 @@ function doAttack(r, c) {
     () => {
       if (success) {
         cell.owner = attFaction.id;
+        // ▼追加：施設のレベルダウン判定
+        if (G.cells[r][c].level > 1) {
+          G.cells[r][c].level -= 1;
+          addLog(`${attFaction.name}が(${r},${c})を制圧！(施設Lv低下)`);
+        } else {
+          // レベル1の場合は開拓地に降格
+          // ※「BUILDING.SETTLEMENT」などの定数名はご自身のコードに合わせてください
+          G.cells[r][c].building = BUILDING.SETTLEMENT; 
+          addLog(`${attFaction.name}が(${r},${c})を制圧！(開拓地に降格)`);
+        }
         updateTerritoryCount();
         // 侵攻成功直後に相手の領土0チェック（ここで敗北処理が走る場合がある）
         checkDefeat(defFaction);
+      } else {
+        addLog(`${attFaction.name}の(${r},${c})への侵攻は失敗しました。`);
       }
       G.actionDone = true;
       updateTerritoryCount();
@@ -1836,7 +1862,10 @@ function renderInfoPanel(r, c) {
   } else if (cell.building === BUILDING.SETTLEMENT) {
     buildingInfo = `<div class="info-row"><span class="info-label">食糧生産</span><span class="info-value pos">+${CONFIG.SETTLEMENT.FOOD_PROD}</span></div>`;
   }
-
+  const currentBonus = calcPowerBonus(r, c, false);
+  if (currentBonus > 0) {
+    buildingInfo += `<div class="info-row"><span class="info-label">戦力補正（周囲）</span><span class="info-value neg">-${currentBonus}</span></div>`;
+  }
 
   body.innerHTML = `
     <div class="info-row"><span class="info-label">座標</span><span class="info-value">(${c}, ${r})</span></div>
