@@ -2049,7 +2049,7 @@ function isMyTurn() {
     // まだマップがセットアップされていない時は許可
     if (!G || !G.activeFactions) return true; 
     // 現在のターン順番と、自分のプレイヤー順番が一致していれば true
-    return G.currentTurnIndex === myPlayerIndex;
+    return G.turnIndex === myPlayerIndex;
 }
 
 setInterval(() => {
