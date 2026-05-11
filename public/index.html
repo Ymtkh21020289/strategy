@@ -758,6 +758,7 @@ socket.on('update_state', (newState) => {
             showTurnNotify(); // UI更新関数があれば呼び出す
         }
     }
+    applyPlayerNames();
     renderLogs();
 });
 
