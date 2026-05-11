@@ -6,29 +6,53 @@ const io = require('socket.io')(http);
 // publicフォルダのファイルをブラウザに返す
 app.use(express.static('public'));
 
-let gameState = null; // ゲームの全体状態を保存
+const rooms = {}; // 部屋ごとのデータを保存する箱
 
 io.on('connection', (socket) => {
-    console.log('プレイヤーが接続しました:', socket.id);
+    // 部屋に入る処理
+    socket.on('join_room', (data) => {
+        const { roomId, playerName } = data;
+        socket.join(roomId);       // ソケットを部屋に所属させる
+        socket.roomId = roomId;    // ソケット自身に部屋IDを覚えさせる
 
-    // あとから接続してきた人（2人目以降）に現在のマップ状態を送る
-    if (gameState) {
-        socket.emit('update_state', gameState);
-    }
+        // 部屋がなければ新しく作る
+        if (!rooms[roomId]) {
+            rooms[roomId] = { state: null, players: [] };
+        }
+        
+        const room = rooms[roomId];
+        // 入室した順番を「プレイヤー番号(0, 1, 2...)」とする
+        const playerIndex = room.players.length;
+        room.players.push({ id: socket.id, name: playerName, index: playerIndex });
 
-    // 誰かが操作した最新のゲーム状態を受け取る
-    socket.on('sync_state', (newState) => {
-        gameState = newState;
-        // 「操作した本人以外」の全員の画面に変更を反映（ブロードキャスト）
-        socket.broadcast.emit('update_state', gameState);
+        // 自分にプレイヤー番号を教える
+        socket.emit('joined', { playerIndex: playerIndex, playerName: playerName });
+
+        // 部屋の全員に最新のプレイヤー一覧を送る
+        io.to(roomId).emit('update_players', room.players);
+
+        // すでにゲームが始まっていれば、最新のマップを送る
+        if (room.state) {
+            socket.emit('update_state', room.state);
+        }
     });
-    
-    // ▼追加：誰かが攻撃したときのダイス情報を他の全員に中継する
+
+    // 状態同期（変更：「broadcast.emit」から「to(roomId).emit」に変更）
+    socket.on('sync_state', (newState) => {
+        const roomId = socket.roomId;
+        if (roomId && rooms[roomId]) {
+            rooms[roomId].state = newState;
+            socket.to(roomId).emit('update_state', newState); 
+        }
+    });
+
+    // 戦闘イベントの中継（変更：「broadcast.emit」から「to(roomId).emit」に変更）
     socket.on('battle_event', (battleData) => {
-        socket.broadcast.emit('show_battle_modal', battleData);
-        console.log(`${battleData}`);
+        if (socket.roomId) {
+            socket.to(socket.roomId).emit('show_battle_modal', battleData);
+            console.log(`${battleData}`);
+        }
     });
 });
-
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
