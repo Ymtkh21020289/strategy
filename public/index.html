@@ -704,6 +704,47 @@ background: #cfc6b8;
    ============================================================ */
 const socket = io();
 
+let myPlayerIndex = null; // 自分の順番（0=赤, 1=青など）
+let roomPlayers = [];     // 部屋にいるプレイヤー一覧
+
+// 「入室する」ボタンを押したときの処理
+function joinGame() {
+    const roomId = document.getElementById('room-input').value.trim();
+    const playerName = document.getElementById('name-input').value.trim();
+    
+    if (!roomId || !playerName) {
+        alert("合言葉とプレイヤー名を入力してください！");
+        return;
+    }
+    
+    // サーバーに合言葉と名前を送る
+    socket.emit('join_room', { roomId: roomId, playerName: playerName });
+    document.getElementById('login-overlay').style.display = 'none';
+}
+
+// サーバーから自分の順番を受け取る
+socket.on('joined', (data) => {
+    myPlayerIndex = data.playerIndex;
+});
+
+// プレイヤー一覧が更新されたら、陣営名（赤陣営など）をプレイヤー名に書き換える関数
+socket.on('update_players', (players) => {
+    roomPlayers = players;
+    applyPlayerNames();
+});
+
+function applyPlayerNames() {
+    if (G && G.activeFactions && roomPlayers.length > 0) {
+        roomPlayers.forEach(p => {
+            // 例：0番目の人は activeFactions[0] の陣営名になる
+            if (G.activeFactions[p.index]) {
+                G.activeFactions[p.index].name = p.name;
+            }
+        });
+        renderAll(); // 画面に名前を反映
+    }
+}
+
 // サーバーから他の人の操作結果を受信したときの処理
 socket.on('update_state', (newState) => {
     G = newState; // 自分のゲームデータを最新に上書き
@@ -1924,6 +1965,10 @@ function renderActionButtons(r, c) {
   const isEmpty = !cell.owner && !cell.void;
   const isEnemy = cell.owner && cell.owner !== faction.id;
   const adjToOwn = getAdjCells(r, c).some(([nr, nc]) => G.cells[nr][nc].owner === faction.id);
+  if (!isMyTurn()) {
+    alert("あなたのターンではありません！");
+    return;
+  }
 
 
   if (isEmpty && adjToOwn) {
@@ -2000,6 +2045,12 @@ function toggleLogVisibility() {
     }
 }
 
+function isMyTurn() {
+    // まだマップがセットアップされていない時は許可
+    if (!G || !G.activeFactions) return true; 
+    // 現在のターン順番と、自分のプレイヤー順番が一致していれば true
+    return G.currentTurnIndex === myPlayerIndex;
+}
 
 initSetup();
 </script>
