@@ -1548,6 +1548,10 @@ function showVictory(faction) {
   document.getElementById('gameover-title').style.color = fd.color;
   document.getElementById('gameover-sub').textContent = `ターン ${G.globalTurn} で全陣営を制圧しました`;
   ov.classList.add('show');
+  if (G) {
+     G = null;
+     socket.emit('sync_state', G);
+  }
 }
 
 
@@ -1572,6 +1576,7 @@ function showMenu() {
       <div class="modal-title">メニュー</div>
       <button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">戻る</button>
       <button class="modal-btn" onclick="location.reload()" style="margin-top:6px">タイトルへ</button>
+      <input type="checkbox" id="toggle-log-btn" checked onchange="toggleLogVisibility()">ログを表示</label>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -1970,6 +1975,19 @@ document.getElementById('map-canvas').addEventListener('click', e => {
   G.selectedCell = { r, c };
   renderAll();
 });
+
+function toggleLogVisibility() {
+    const logArea = document.getElementById('game-log');
+    const checkBox = document.getElementById('toggle-log-btn');
+    
+    if (logArea && checkBox) {
+        if (checkBox.checked) {
+            logArea.style.display = 'block'; // チェックされていれば表示
+        } else {
+            logArea.style.display = 'none';  // チェックが外れていれば非表示
+        }
+    }
+}
 
 
 initSetup();
