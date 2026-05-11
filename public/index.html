@@ -1407,7 +1407,7 @@ function doAttack(r, c) {
   targetCell.owner = attFaction.id; // 一瞬だけ自分のマスにする
   targetCell.building = null;
   const attBonus = calcPowerBonus(r, c, true); // その状態で補正を計算
-  taegetCell.owner = originalOwner; // すぐに元の持ち主に戻す
+  targetCell.owner = originalOwner; // すぐに元の持ち主に戻す
   targetCell.building = originalBuilding;
   const defBonus = calcPowerBonus(r, c, false);
 
@@ -1444,8 +1444,6 @@ function doAttack(r, c) {
           G.cells[r][c].level -= 1;
           addLog(`${attFaction.name}が(${r},${c})を制圧！(施設Lv低下)`);
         } else {
-          // レベル1の場合は開拓地に降格
-          // ※「BUILDING.SETTLEMENT」などの定数名はご自身のコードに合わせてください
           G.cells[r][c].building = BUILDING.SETTLEMENT; 
           addLog(`${attFaction.name}が(${r},${c})を制圧！(開拓地に降格)`);
         }
