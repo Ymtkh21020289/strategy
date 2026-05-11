@@ -1329,7 +1329,7 @@ function checkDefeat(faction) {
   // ・脱落した陣営が現在ターン以降の場合     → indexはそのままでOK
   // ・これにより advanceTurn の +1 で正しく次のプレイヤーに移る
   if (defeatedIndex <= G.turnIndex) {
-    G.turnIndex = Math.max(0, G.turnIndex - 1);
+    G.turnIndex = G.turnIndex - 1;
   }
   // 範囲外になった場合はラップ
   if (G.activeFactions.length > 0 && G.turnIndex >= G.activeFactions.length) {
