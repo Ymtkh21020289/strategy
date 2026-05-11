@@ -6,6 +6,10 @@ const io = require('socket.io')(http);
 // publicフォルダのファイルをブラウザに返す
 app.use(express.static('public'));
 
+app.get('/ping', (req, res) => {
+    res.status(200).send('pong');
+});
+
 const rooms = {}; // 部屋ごとのデータを保存する箱
 
 io.on('connection', (socket) => {
