@@ -2052,6 +2052,10 @@ function isMyTurn() {
     return G.currentTurnIndex === myPlayerIndex;
 }
 
+setInterval(() => {
+    fetch('/ping').catch(err => console.log('Pingエラー:', err));
+}, 5 * 60 * 1000); // 5分（300000ミリ秒）ごとに実行
+
 initSetup();
 </script>
 </body>
