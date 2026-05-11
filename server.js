@@ -26,6 +26,7 @@ io.on('connection', (socket) => {
     // ▼追加：誰かが攻撃したときのダイス情報を他の全員に中継する
     socket.on('battle_event', (battleData) => {
         socket.broadcast.emit('show_battle_modal', battleData);
+        console.log(`${battleData}`);
     });
 });
 
