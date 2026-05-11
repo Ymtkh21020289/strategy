@@ -737,8 +737,8 @@ function applyPlayerNames() {
     if (G && G.activeFactions && roomPlayers.length > 0) {
         roomPlayers.forEach(p => {
             // 例：0番目の人は activeFactions[0] の陣営名になる
-            if (G.activeFactions[p.index]) {
-                G.activeFactions[p.index].name = p.name;
+            if (G.factions[p.index]) {
+                G.factions[p.index].name = p.name;
             }
         });
         renderAll(); // 画面に名前を反映
