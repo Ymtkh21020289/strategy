@@ -559,6 +559,18 @@ background: #cfc6b8;
 </head>
 <body>
 
+<div id="login-overlay" style="position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <div style="background: var(--panel); padding: 30px; border-radius: 10px; border: 2px solid var(--border); text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--text); margin-top: 0;">ゲームに参加</h2>
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="room-input" placeholder="部屋の合言葉 (例: 1234)" style="padding: 8px; width: 200px; border: 1px solid var(--border); border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="name-input" placeholder="プレイヤー名" style="padding: 8px; width: 200px; border: 1px solid var(--border); border-radius: 4px;">
+        </div>
+        <button onclick="joinGame()" class="action-btn primary" style="padding: 10px 30px; font-size: 16px;">入室する</button>
+    </div>
+</div>
 
 <div id="setup-overlay">
   <div id="setup-box">
